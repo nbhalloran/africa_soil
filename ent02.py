@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore")
+warnings.simplefilter("ignore", RuntimeWarning) 
+
 import numpy as np
 import utilities as util
 import sklearn.linear_model as linear
@@ -28,13 +32,23 @@ from sklearn.linear_model import LogisticRegression
 import math
 import correlation_based_smoothing as CBS
 import cookb_signalsmooth as cbss 
+import random
 
 
-issub = True
+issub = False
+#cvtype = "standard"
+cvtype = "nick"
+#Linux
 trainloc = "/home/nick/Documents/kaggle/africa_soil/data/training.csv"
 testloc = "/home/nick/Documents/kaggle/africa_soil/data/sorted_test.csv"
 predloc = "/home/nick/Documents/kaggle/africa_soil/data/predictions.csv"
 sampleloc = "/home/nick/Documents/kaggle/africa_soil/data/sample_submission.csv"
+#Windows
+trainloc = r"C:\DS\kaggle\projects\africa_soil\data\training.csv"
+testloc = r"C:\DS\kaggle\projects\africa_soil\data\sorted_test.csv"
+predloc = r"C:\DS\kaggle\projects\africa_soil\data\predictions.csv"
+sampleloc = r"C:\DS\kaggle\projects\africa_soil\data\sample_submission.csv"
+
 
 
 def beatthebenchmark():
@@ -127,10 +141,11 @@ def btbCrossValidation():
 
 def nickmain1():
 
-	
+
 	targets = ['Ca','P','pH','SOC','Sand']
 	C02_band = ['m2379.76','m2377.83','m2375.9','m2373.97','m2372.04','m2370.11','m2368.18','m2366.26','m2364.33','m2362.4','m2360.47','m2358.54','m2356.61','m2354.68','m2352.76']
 	train_cols_to_remove = ['PIDN']+targets+C02_band
+	#use the below to tune one at a time
 	#targets = ['P']
 
 	df_train = pd.read_csv(trainloc,tupleize_cols=True)
@@ -148,7 +163,28 @@ def nickmain1():
  		spectra_features.remove(feats)
 
  	fltSpectra=flt.gaussian_filter1d(np.array(x_train[spectra_features]),sigma=20,order=1)
+	#sets the subsoil variable depth to be either 1 or 0
 	x_train["Depth"] = x_train["Depth"].apply(lambda depth:0 if depth =="Subsoil" else 1)
+
+	tvals = {}
+	counter = 0 
+	x_train["xmap"] = 0
+
+	for x in x_train['TMAP'].unique():
+		x_train['xmap'][x_train['TMAP']==x] = counter
+		counter = counter + 1
+
+	# 	if x in tvals:
+	# 		x_train["xmap"] = counter
+	# 	else:
+	# 		tvals[x] = x
+	# 		counter = counter + 1
+	# 		x_train["xmap"] = counter
+			
+	# for x
+
+	
+
 
 
 	# x = x_train[spectra_features].ix[0]
@@ -199,7 +235,7 @@ def nickmain1():
 	#SELECT Kth BEST FEATURES TO INCLUDE
 	feats_list = {}
 	for target in targets:
-		selector = SelectKBest(f_regression, k=2500)
+		selector = SelectKBest(f_regression, k=5)
 		selector.fit_transform(x_train[spectra_features], y_train[target])
 		selected = selector.get_support()
 		
@@ -228,10 +264,13 @@ def nickmain1():
 		else:
 			print "hmmm"
 			feats = [col for (col,sel) in zip(list(x_train[spectra_features].columns.values), selected) if sel]
-			#feats = list(x_train[spectra_features].columns[0:3578])
+			feats = list(x_train[spectra_features].columns[0:3578])
 		
 		#feats_list[target] = list(x_train[spectra_features].columns[0:3578])  + non_spectra_feats_inc
+		
 		feats_list[target] = feats + non_spectra_feats_inc
+		feats_list[target] = feats 
+
 		# print feats[0:1000]
 		# print ("here it is" , x_train[spectra_features].columns.get_loc('m5243.56'))
 		# print ("here it is" , x_train[spectra_features].columns.get_loc('m5214.63'))
@@ -254,32 +293,59 @@ def nickmain1():
 
 
 	if issub == False:
-		cv = cross_validation.KFold(len(x_train), n_folds=10, indices=False, shuffle=True)
-		subresults = {}
-		results = []
-		for train_sub, test_sub in cv:
-			for target in targets:
-				#clf = ensemble.GradientBoostingRegressor(n_estimators=6)
-				#clf = RandomForestRegressor(n_estimators = 40)
-				#clf = linear_model.Lasso(alpha=0.08)
-				#clf = svm.SVC(C=10000.0, verbose = 2)
-				clf = svm.SVR(C=5000.0)#, verbose = 2)
-				#clf = tree.DecisionTreeRegressor(min_samples_leaf=10000)
-				#clf = Ridge(alpha=1.0)
-				#clf = ElasticNet(alpha=0.1, l1_ratio=0.7)
-				#clf = BayesianRidge(compute_score=False, normalize=True, n_iter=300,fit_intercept=False)
-				clf.fit(np.array(x_train[feats_list[target]])[train_sub], np.array(y_train[target])[train_sub])
-				pred = clf.predict(np.array(x_train[feats_list[target]])[test_sub]).astype(float)
-				subresults[target] = ev.rmse(np.array(y_train[target])[test_sub],np.array(pred))
-				#df[target] = pred
-				
+		if cvtype == "standard": 
+			cv = cross_validation.KFold(len(x_train), n_folds=10, indices=False, shuffle=True)
+			subresults = {}
+			results = []
+			for train_sub, test_sub in cv:
+				for target in targets:
+					#clf = ensemble.GradientBoostingRegressor(n_estimators=6)
+					#clf = RandomForestRegressor(n_estimators = 40)
+					#clf = linear_model.Lasso(alpha=0.08)
+					#clf = svm.SVC(C=10000.0, verbose = 2)
+					clf = svm.SVR(C=1000.0)#, verbose = 2)
+					#clf = tree.DecisionTreeRegressor(min_samples_leaf=10000)
+					#clf = Ridge(alpha=1.0)
+					#clf = ElasticNet(alpha=0.1, l1_ratio=0.7)
+					#clf = BayesianRidge(compute_score=False, normalize=True, n_iter=300,fit_intercept=False)
+					clf.fit(np.array(x_train[feats_list[target]])[train_sub], np.array(y_train[target])[train_sub])
+					pred = clf.predict(np.array(x_train[feats_list[target]])[test_sub]).astype(float)
+					subresults[target] = ev.rmse(np.array(y_train[target])[test_sub],np.array(pred))
+					#df[target] = pred
+					
 
-			subtotal = 0 
-			for x in subresults:
-				subtotal = subtotal + subresults[x]
-			print ("average for the run is ", subtotal/len(targets))
-			results.append(subtotal/len(targets))
-		print "Results: " + str( np.array(results).mean() )
+				subtotal = 0 
+				for x in subresults:
+					subtotal = subtotal + subresults[x]
+				print ("average for the run is ", subtotal/len(targets))
+				results.append(subtotal/len(targets))
+			print "Results: " + str( np.array(results).mean() )
+		else:
+			print "non standard CV"
+
+			
+
+			subresults = {}
+			results = []
+			for zzz in range(15):
+				x_train["cvtrain"] = True
+				for x in random.sample(xrange(0,len(x_train['TMAP'].unique()) - 1), 10):
+					x_train["cvtrain"][x_train["xmap"]==x] = False
+				for target in targets:
+					
+					clf = svm.SVR(C=10000.0)#, verbose = 2)
+					clf.fit(np.array(x_train[feats_list[target]])[x_train["cvtrain"] == True], np.array(y_train[target])[x_train["cvtrain"] == True])
+					pred = clf.predict(np.array(x_train[feats_list[target]])[x_train["cvtrain"] == False]).astype(float)
+					subresults[target] = ev.rmse(np.array(y_train[target])[x_train["cvtrain"] == False],np.array(pred))
+					#df[target] = pred
+					
+
+				subtotal = 0 
+				for x in subresults:
+					subtotal = subtotal + subresults[x]
+				print ("average for the run is ", subtotal/len(targets))
+				results.append(subtotal/len(targets))
+			print "Results: " + str( np.array(results).mean() )
 
 	else:
 		test_all = pd.read_csv(testloc)
@@ -293,7 +359,7 @@ def nickmain1():
 			#clf = RandomForestRegressor(n_estimators = 20)
 			#clf = linear_model.Lasso(alpha=0.08)
 			#clf = svm.SVC()
-			clf = svm.SVR(C=5000.0)#, verbose = 2)
+			clf = svm.SVR(C=5000.0)
 			#clf = tree.DecisionTreeRegressor(min_samples_leaf=20)
 			#clf = Ridge(alpha=1.0)
 			#clf = ElasticNet(alpha=0.1, l1_ratio=0.7)
@@ -302,6 +368,8 @@ def nickmain1():
 			pred = clf.predict(np.array(test_all[feats_list[target]]))
 			df[target] = pred
 			df.to_csv(predloc, index=False, cols=["PIDN","Ca","P","pH","SOC","Sand"])
+
+
 
 
 def smoothListGaussian(list,degree=5):  
