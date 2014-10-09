@@ -41,7 +41,7 @@ cvtype = "nick"
 #Linux
 trainloc = "/home/nick/Documents/kaggle/africa_soil/data/training.csv"
 testloc = "/home/nick/Documents/kaggle/africa_soil/data/sorted_test.csv"
-predloc = "/home/nick/Documents/kaggle/africa_soil/data/predictions.csv"
+predloc = "/home/nick/Documents/kaggle/africa_soil/data/predictions_new.csv"
 sampleloc = "/home/nick/Documents/kaggle/africa_soil/data/sample_submission.csv"
 #Windows
 trainloc = r"C:\DS\kaggle\projects\africa_soil\data\training.csv"
@@ -52,7 +52,7 @@ sampleloc = r"C:\DS\kaggle\projects\africa_soil\data\sample_submission.csv"
 
 
 def beatthebenchmark():
-	predloc = "/home/nick/Documents/kaggle/africa_soil/data/beatthebenchmark.csv"
+	predloc = "/home/nick/Documents/kaggle/africa_soil/data/beatthebenchmark1.csv"
 	train = pd.read_csv(trainloc)
 	test = pd.read_csv(testloc)
 	labels = train[['Ca','P','pH','SOC','Sand']].values
@@ -62,8 +62,8 @@ def beatthebenchmark():
 
 	xtrain, xtest = np.array(train)[:,:3578], np.array(test)[:,:3578]
 	print xtrain.shape
-	return
-	sup_vec = svm.SVR(C=10000.0, verbose = 2)
+
+	sup_vec = svm.SVR(C=11000.0, verbose = 2)
 
 	preds = np.zeros((xtest.shape[0], 5))
 	for i in range(5):
@@ -394,9 +394,9 @@ def smoothListGaussian(list,degree=5):
 	return smoothed  
 
 def main():
-    nickmain1()
+    #nickmain1()
     #btbCrossValidation()
-    #beatthebenchmark()
+    beatthebenchmark()
     
 if __name__ == '__main__':
     main()
